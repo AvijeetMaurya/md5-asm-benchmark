@@ -118,6 +118,11 @@ auto deprecatedMD5(std::vector<Packet>& packets, std::vector<int>& indices) {
     return elapsed.count();
 }
 
+template<void(&fn)(MD5_STATE<uint32_t>*, const void*)>
+void benchmark(auto baseline, std::string_view name, std::vector<Packet>& packets, std::vector<int>& indices) {
+    std::cout << (static_cast<double>(baseline - externalMD5<fn>(name, packets, indices)) / baseline) * 100 << "%\n";
+}
+
 int main() {
     std::srand(time(0));
     std::vector<Packet> packets;
@@ -126,13 +131,13 @@ int main() {
     randomizeIndices(indices, packets.size());
 
     auto baseline = deprecatedMD5(packets, indices);
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_std>("std", packets, indices)) / baseline) * 100 << "%\n";
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_gopt>("GOpt", packets, indices)) / baseline) * 100 << "%\n";
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_ghopt>("GHOpt", packets, indices)) / baseline) * 100 << "%\n";
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_nolea>("NoLEA", packets, indices)) / baseline) * 100 << "%\n";
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_noleag>("NoL-G", packets, indices)) / baseline) * 100 << "%\n";
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_noleagh>("NoL-GH", packets, indices)) / baseline) * 100 << "%\n";
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_cache4>("Cache4", packets, indices)) / baseline) * 100 << "%\n";
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_cache8>("Cache8", packets, indices)) / baseline) * 100 << "%\n";
-    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_cache_gopt>("Cache8G", packets, indices)) / baseline) * 100 << "%\n";
+    benchmark<md5_block_std>(baseline, "std", packets, indices);
+    benchmark<md5_block_gopt>(baseline, "GOpt", packets, indices);
+    benchmark<md5_block_ghopt>(baseline, "GHOpt", packets, indices);
+    benchmark<md5_block_nolea>(baseline, "NoLEA", packets, indices);
+    benchmark<md5_block_noleag>(baseline, "NoL-G", packets, indices);
+    benchmark<md5_block_noleagh>(baseline, "NoL-GH", packets, indices);
+    benchmark<md5_block_cache4>(baseline, "Cache4", packets, indices);
+    benchmark<md5_block_cache8>(baseline, "Cache8", packets, indices);
+    benchmark<md5_block_cache_gopt>(baseline, "Cache8G", packets, indices);
 }
