@@ -97,6 +97,27 @@ auto externalMD5(std::string_view name, std::vector<Packet>& packets, std::vecto
     return elapsed.count();
 }
 
+#include <openssl/md5.h>
+
+void calculate_md5(const void* buf, size_t buf_size, unsigned char* res) {
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
+    MD5(static_cast<const unsigned char*>(buf), buf_size, res);
+    #pragma GCC diagnostic pop
+}
+
+auto deprecatedMD5(std::vector<Packet>& packets, std::vector<int>& indices) {
+    auto start = std::chrono::system_clock::now();
+    auto out = std::make_unique<unsigned char[]>(16);
+    for (const int index : indices) {
+        calculate_md5(packets[index].buf.get(), packets[index].size, out.get());
+    }
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    std::cout << "openssl deprecated md5: " << elapsed.count() / static_cast<double>(packets.size()) << "ns \n";
+    return elapsed.count();
+}
+
 int main() {
     std::srand(time(0));
     std::vector<Packet> packets;
@@ -104,7 +125,8 @@ int main() {
     randomizePackets(packets);
     randomizeIndices(indices, packets.size());
 
-    auto baseline = externalMD5<md5_block_std>("std", packets, indices);
+    auto baseline = deprecatedMD5(packets, indices);
+    std::cout << (static_cast<double>(baseline - externalMD5<md5_block_std>("std", packets, indices)) / baseline) * 100 << "%\n";
     std::cout << (static_cast<double>(baseline - externalMD5<md5_block_gopt>("GOpt", packets, indices)) / baseline) * 100 << "%\n";
     std::cout << (static_cast<double>(baseline - externalMD5<md5_block_ghopt>("GHOpt", packets, indices)) / baseline) * 100 << "%\n";
     std::cout << (static_cast<double>(baseline - externalMD5<md5_block_nolea>("NoLEA", packets, indices)) / baseline) * 100 << "%\n";
